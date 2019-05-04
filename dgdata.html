@@ -1,0 +1,161 @@
+<html>
+
+<head>
+    <style>
+        p {
+
+            color: white;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            background: #4A75B2;
+            border-radius: 7px;
+            border: 2px solid #5A8FD5;
+        }
+
+        input {
+            /*text-align-last: center;*/
+            background-color: #436FA8;
+
+            color: white;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        body {
+            margin: 0 auto;
+            background-color: #5A8FD5;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+        }
+        a{
+            text-decoration: none;
+            color: white;
+        }
+
+        textarea {
+            color: white;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            background: #4A75B2;
+            border-radius: 7px;
+            border: 2px solid #5A8FD5;
+            width: 60%;
+            height: 60%;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <h1>NKIA's DG Data Editor</h1>
+        <input type="file" id="file">
+        <br>
+        <br>
+        <textarea id="dgdata"></textarea>
+        <br>
+        <br>
+        <input type="button" value="Download" onclick="download()">
+        <br>
+        <br>
+        <a href = "https://www.youtube.com/channel/UCPkouG116lenuZl3G1oYYrQ">Check out my channel</a>
+    </div>
+
+    <script>
+        document.getElementById('file').addEventListener('change', function () {
+            var reader = new FileReader();
+            reader.onload = function () {
+
+                var arrayBuffer = this.result,
+                    array = new Uint8Array(arrayBuffer);
+                document.getElementById('dgdata').value = JSON.stringify(JSON.parse(decode(array)), null, '\t');
+                //temp = (encode(decode(array)));
+                //console.log([...array]);
+
+            }
+            reader.readAsArrayBuffer(this.files[0]);
+        });
+
+        let decode = buf => (new TextDecoder).decode(buf.map((b, i) => b - (21 + (i - 14) % 6))).substr(14);
+        let encode = str => {
+            let buf = (new TextEncoder).encode(str);
+            let header = "DGDATA" + hash1(buf);
+            //buf = (new TextEncoder).encode(header + str);
+            buf = buf.map((b, i) => {
+                b += 21;
+                b += i % 6;
+                b %= 256;
+                return b;
+            });
+            return new Uint8Array([...(new TextEncoder).encode(header)].concat([...buf]));
+        }
+        let hash1 = buf => {
+            let hash = 0;
+            let loc2 = 0;
+            buf.forEach((s, i) => {
+                hash = ((hash >> 8) & 16777215) ^ hash2((hash ^ s) & 255);
+            });
+            if (hash < 0) {
+                hash = 4294967295 + hash + 1;
+            }
+            hash = hash.toString(16);
+            while (hash.length < 8) {
+                hash = "0" + hash;
+            }
+            return hash;
+        }
+        let hash2 = num => {
+            let loc4 = 3988292384;
+            for (let i = 0; i < 8; i++) {
+                if (num & 1) {
+                    num = num >> 1;
+                    num = num ^ loc4;
+                } else {
+                    num = num >> 1;
+                }
+            }
+            return num;
+        }
+        let download = () => {
+            let input = document.getElementById('dgdata').value;
+            try{
+                input = JSON.stringify(JSON.parse(input));
+            } catch (e){
+                alert('Invalid JSON!');
+                return;
+            }
+            let data = encode(input);
+            console.log(data);
+            let fileName = document.getElementById('file').files[0].name;
+            let type = "application/data";
+            let a = document.createElement("a"),
+                file = new Blob([data], { type: type });
+            if (window.navigator.msSaveOrOpenBlob) // IE10+
+                window.navigator.msSaveOrOpenBlob(file, fileName);
+            else { // Others
+                var url = URL.createObjectURL(file);
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 0);
+            }
+        }
+    </script>
+</body>
+
+</html>
